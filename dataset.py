@@ -1,6 +1,6 @@
 import csv
 import numpy as np
-from simulation2D import c, G, BlackHole, Ray, rk4Step
+from simulation2D import c, G, BlackHole, Ray
 
 SagA = BlackHole((0.0, 0.0, 0.0), 8.54e36)
 
