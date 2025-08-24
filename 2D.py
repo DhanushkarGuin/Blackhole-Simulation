@@ -1,164 +1,205 @@
-## Importing Necessary Libraries
-import glfw # For Rendering
-from OpenGL.GL import *         # For Rendering
-import numpy as np              # For Mathematical Calculations
-from scipy import integrate     # For Numerical Integration
+import sys
+import math
+import glfw
+import numpy as np
+from OpenGL.GL import *
 
-## Orthographic Projection
-def orthographic_projection(width, height, left, right, bottom, top):
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    glOrtho(left,right,bottom,top,-1.0,1.0)
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
+# --- Constants --- #
+c = 299792458.0
+G = 6.67430e-11
 
-## Defining Orthographic Volume
-view_width = 1.0
-view_height = 1.0
-left = -view_width
-right = view_width
-bottom = -view_height
-top = view_height
 
-## Initializing GLFW
-if not glfw.init():
-    raise Exception("Failed to initialize GLFW")
+# --- Engine --- #
+class Engine:
+    def __init__(self, width=600, height=400):
+        if not glfw.init():
+            print("Failed to initialize GLFW")
+            sys.exit(1)
 
-## GLFW Window
-width,height = 800,600
-window = glfw.create_window(width, height, "Black Hole Simulation", None, None)
-if not window:
-    glfw.terminate()
-    raise Exception("Failed to create GLFW window")
+        self.WIDTH = width
+        self.HEIGHT = height
+        self.window = glfw.create_window(width, height, "Black Hole Simulation", None, None)
+        if not self.window:
+            print("Failed to create GLFW window")
+            glfw.terminate()
+            sys.exit(1)
 
-glfw.make_context_current(window)
-glViewport(0, 0, width, height)
+        glfw.make_context_current(self.window)
 
-## Constants
-G = 6.67430e-11                         # Gravitational Constant
-c = 299792458.0                         # Speed of light
-mass_bh = 8.54e36                       # Mass of our Blackhole
-r_s = 2 * G * mass_bh / (c ** 2)        # Schwarzschild radius
+        # Viewport scaling in meters
+        self.width = 1.0e11
+        self.height = 7.5e10
 
-## Blackhole Class
-class Blackhole:
-    def __init__(self, position, mass, r_s,viewport_size=2.0, fit_fraction=0.20):
-        self.position = np.array(position, dtype=np.float32)
+        # Navigation state
+        self.offsetX = 0.0
+        self.offsetY = 0.0
+        self.zoom = 1.0
+
+        glViewport(0, 0, width, height)
+
+    def run(self):
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+
+        left   = -self.width + self.offsetX
+        right  =  self.width + self.offsetX
+        bottom = -self.height + self.offsetY
+        top    =  self.height + self.offsetY
+        glOrtho(left, right, bottom, top, -1.0, 1.0)
+
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+
+
+engine = Engine()
+
+
+# --- Black Hole --- #
+class BlackHole:
+    def __init__(self, pos, mass):
+        self.position = np.array(pos, dtype=float)
         self.mass = mass
-        self.r_s = r_s
-
-        # Scale factor so horizon fits nicely inside viewport
-        # viewport_size is (right-left) = 2.0 if [-1,1]
-        max_radius = (viewport_size / 2) * fit_fraction
-        self.scale = max_radius / self.r_s
-
-    def draw(self, segments=100):
-        glPushMatrix()
-        # Move to black hole position
-        glTranslatef(self.position[0], self.position[1], 0.0)
-
-        # Draw the event horizon as a filled circle
-        glColor3f(1.0, 0.0, 0.0)
-        glBegin(GL_TRIANGLE_FAN)
-        glVertex2f(0.0, 0.0)
-        for i in range(segments + 1):
-            angle = 2.0 * np.pi * i/segments
-            x = (self.r_s * self.scale) * np.cos(angle)
-            y = (self.r_s * self.scale) * np.sin(angle)
-            glVertex2f(x,y)
-        glEnd()
-        glPopMatrix()
-
-bh = Blackhole([0.0, 0.0], mass_bh, r_s, viewport_size=2.0, fit_fraction=0.20)
-
-class Ray:
-    def __init__(self, pos, dir, r_s):
-        self.x = pos[0]
-        self.y = pos[1]
-
-        # polar coordinates
-        self.r = np.sqrt(self.x**2 + self.y**2)
-        self.phi = np.arctan2(self.y, self.x)
-
-        # Derivatives: convert velocity vector from Cartesian to polar
-        # dr = radial component, dphi = angular velocity
-        dir_x, dir_y = dir[0], dir[1]
-        self.dr = dir_x * np.cos(self.phi) + dir_y * np.sin(self.phi)
-        self.dphi = (-dir_x * np.sin(self.phi) + dir_y * np.cos(self.phi)) / self.r
-
-        # Conserved angular momentum
-        self.L = self.r**2 * self.dphi
-
-        # Schwarzschild metric factor f = 1 - r_s / r
-        f = 1.0 - r_s / self.r
-
-        # dt/dλ factor based on initial velocities
-        dt_dlambda = np.sqrt((self.dr**2) / (f**2) + (self.r**2 * self.dphi**2) / f)
-        self.E = f * dt_dlambda
-        
-        # Trail of positions for visualization (list of (x,y) tuples)
-        self.trail = [(self.x, self.y)]
-
-    def update_cartesian(self):
-        # Update Cartesian coordinates from polar
-        self.x = self.r * np.cos(self.phi)
-        self.y = self.r * np.sin(self.phi)
-
-    def record_trail(self):
-        # Add current position to trail
-        self.trail.append((self.x, self.y))
+        self.r_s = 2.0 * G * mass / (c * c)  # Schwarzschild radius
 
     def draw(self):
-    # Draw current point
-        glPointSize(3.0)
-        glColor3f(1.0, 1.0, 1.0)  # White color for ray
-        glBegin(GL_POINTS)
-        glVertex2f(self.x, self.y)
+        glBegin(GL_TRIANGLE_FAN)
+        glColor3f(1.0, 0.0, 0.0)  # Red color
+        glVertex2f(0.0, 0.0)
+        for i in range(101):
+            angle = 2.0 * math.pi * i / 100
+            x = self.r_s * math.cos(angle)
+            y = self.r_s * math.sin(angle)
+            glVertex2f(x, y)
         glEnd()
-    
-    # Draw trail
-        if len(self.trail) < 2:
-            return
+
+
+SagA = BlackHole((0.0, 0.0, 0.0), 8.54e36)  # Sagittarius A
+
+
+# --- Ray --- #
+class Ray:
+    def __init__(self, pos, direction):
+        # Cartesian coords
+        self.x, self.y = pos
+        # Polar coords
+        self.r = math.sqrt(self.x**2 + self.y**2)
+        self.phi = math.atan2(self.y, self.x)
+
+        # Velocities
+        self.dr = direction[0] * math.cos(self.phi) + direction[1] * math.sin(self.phi)
+        self.dphi = (-direction[0] * math.sin(self.phi) + direction[1] * math.cos(self.phi)) / self.r
+
+        # Conserved quantities
+        self.L = self.r**2 * self.dphi
+        f = 1.0 - SagA.r_s / self.r
+        dt_dλ = math.sqrt((self.dr**2) / (f*f) + (self.r**2 * self.dphi**2) / f)
+        self.E = f * dt_dλ
+
+        # Trail
+        self.trail = [(self.x, self.y)]
+
+    def draw(self, rays):
+        # Draw current ray positions
+        glPointSize(2.0)
+        glColor3f(1.0, 0.0, 0.0)
+        glBegin(GL_POINTS)
+        for ray in rays:
+            glVertex2f(ray.x, ray.y)
+        glEnd()
+
+        # Trails
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glLineWidth(1.0)
-        glBegin(GL_LINE_STRIP)
-        for i, (tx, ty) in enumerate(self.trail):
-            alpha = i / max(len(self.trail) - 1, 1)
-            glColor4f(1.0, 1.0, 1.0, alpha)
-            glVertex2f(tx, ty)
-        glEnd()
+
+        for ray in rays:
+            N = len(ray.trail)
+            if N < 2:
+                continue
+            glBegin(GL_LINE_STRIP)
+            for i, (tx, ty) in enumerate(ray.trail):
+                alpha = i / (N - 1)
+                glColor4f(1.0, 1.0, 1.0, max(alpha, 0.05))
+                glVertex2f(tx, ty)
+            glEnd()
+
         glDisable(GL_BLEND)
 
-left_edge = left  # use your orthographic left boundary
-start_x = left_edge  # or a little inside, e.g. left + margin
+    def step(self, dλ, rs):
+        if self.r <= rs:
+            return
+        rk4Step(self, dλ, rs)
 
-num_rays = 10
-y_values = np.linspace(bottom, top, num_rays)
-direction = np.array([1e-1, 0.0])  # magnitude scales speed
+        # Back to Cartesian
+        self.x = self.r * math.cos(self.phi)
+        self.y = self.r * math.sin(self.phi)
 
+        self.trail.append((self.x, self.y))
+
+
+# --- Geodesic Function --- #
+def geodesicRHS(ray, rs):
+    r, dr, dphi, E = ray.r, ray.dr, ray.dphi, ray.E
+    f = 1.0 - rs / r
+
+    rhs = [0.0] * 4
+    rhs[0] = dr
+    rhs[1] = dphi
+    dt_dλ = E / f
+    rhs[2] = (
+        - (rs / (2 * r * r)) * f * (dt_dλ**2)
+        + (rs / (2 * r * r * f)) * (dr**2)
+        + (r - rs) * (dphi**2)
+    )
+    rhs[3] = -2.0 * dr * dphi / r
+    return rhs
+
+
+def addState(a, b, factor):
+    return [a[i] + b[i] * factor for i in range(4)]
+
+# --- Range Kutta 4 Function --- #
+def rk4Step(ray, dλ, rs):
+    y0 = [ray.r, ray.phi, ray.dr, ray.dphi]
+
+    k1 = geodesicRHS(ray, rs)
+    temp = addState(y0, k1, dλ/2.0)
+    r2 = Ray((ray.x, ray.y), (0, 0))
+    r2.r, r2.phi, r2.dr, r2.dphi, r2.E = temp[0], temp[1], temp[2], temp[3], ray.E
+    k2 = geodesicRHS(r2, rs)
+
+    temp = addState(y0, k2, dλ/2.0)
+    r3 = Ray((ray.x, ray.y), (0, 0))
+    r3.r, r3.phi, r3.dr, r3.dphi, r3.E = temp[0], temp[1], temp[2], temp[3], ray.E
+    k3 = geodesicRHS(r3, rs)
+
+    temp = addState(y0, k3, dλ)
+    r4 = Ray((ray.x, ray.y), (0, 0))
+    r4.r, r4.phi, r4.dr, r4.dphi, r4.E = temp[0], temp[1], temp[2], temp[3], ray.E
+    k4 = geodesicRHS(r4, rs)
+
+    ray.r    += (dλ/6.0) * (k1[0] + 2*k2[0] + 2*k3[0] + k4[0])
+    ray.phi  += (dλ/6.0) * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
+    ray.dr   += (dλ/6.0) * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
+    ray.dphi += (dλ/6.0) * (k1[3] + 2*k2[3] + 2*k3[3] + k4[3])
+
+
+# --- Main Loop --- #
 rays = []
-for y in y_values:
-    pos = np.array([start_x, y])
-    rays.append(Ray(pos, direction, bh.r_s * bh.scale))
+x0 = -1e11   # far left
+for y0 in np.linspace(-5e10, 5e10, 20):  # vertical spread
+    rays.append(Ray((x0, y0), (c, 0.0)))
 
-## Visible Window
-while not glfw.window_should_close(window):
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)              # For clear screen
-    orthographic_projection(width, height, left, right, bottom, top)
+while not glfw.window_should_close(engine.window):
+    engine.run()
+    SagA.draw()
 
-    # For Blackhole
-    bh.draw()
-
-    # For Rays
     for ray in rays:
-        ray.r += 0.001
-        ray.phi += 0.001
-        ray.update_cartesian()
-        ray.record_trail()
-        ray.draw()
+        ray.step(1.0, SagA.r_s)
+        ray.draw(rays)
 
-    glfw.swap_buffers(window)
+    glfw.swap_buffers(engine.window)
     glfw.poll_events()
 
 glfw.terminate()
