@@ -1,4 +1,3 @@
 PyOpenGL
 numpy
 glfw
-PyOpenGL_accelerate
