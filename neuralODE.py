@@ -7,7 +7,7 @@ dataset = pd.read_csv('ray_dataset.csv')
 
 features = dataset.columns
 new_features = features.drop(['ray_id','step','x','y'])
-print(new_features)
+# print(new_features)
 
 X = dataset[new_features].values[:-1] # Current State
 y = dataset[new_features].values[1:] # Next state
@@ -54,7 +54,7 @@ print(f"Test MSE: {loss}")
 # --- Exporting the working model --- #
 import joblib
 
-model.save('neuralODE_model.h5')
+model.save('neuralODE_model.keras')
 joblib.dump(scaler_X, 'scaler_X.pkl')
 joblib.dump(scaler_y, 'scaler_y.pkl')
 print('Exportation done!')
