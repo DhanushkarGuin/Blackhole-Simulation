@@ -1,3 +1,6 @@
 PyOpenGL
 numpy
 glfw
+pandas
+Scikit-learn
+tensorflow
