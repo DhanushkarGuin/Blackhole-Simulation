@@ -6,7 +6,7 @@ import joblib
 import numpy as np
 
 # Load trained model and scaler
-model = load_model("neuralODE_model.h5")
+model = load_model("neuralODE_model.keras")
 scaler_X = joblib.load("scaler_X.pkl")
 scaler_y = joblib.load("scaler_y.pkl")
 
