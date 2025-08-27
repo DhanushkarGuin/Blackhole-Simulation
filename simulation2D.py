@@ -93,8 +93,8 @@ class Ray:
         # Conserved quantities
         self.L = self.r**2 * self.dphi
         f = 1.0 - SagA.r_s / self.r
-        dt_dλ = math.sqrt((self.dr**2) / (f*f) + (self.r**2 * self.dphi**2) / f)
-        self.E = f * dt_dλ
+        dt_dLambda = math.sqrt((self.dr**2) / (f*f) + (self.r**2 * self.dphi**2) / f)
+        self.E = f * dt_dLambda
 
         # Trail
         self.trail = [(self.x, self.y)]
@@ -126,10 +126,10 @@ class Ray:
 
         glDisable(GL_BLEND)
 
-    def step(self, dλ, rs):
+    def step(self, dLambda, rs):
         if self.r <= rs:
             return
-        rk4Step(self, dλ, rs)
+        rk4Step(self, dLambda, rs)
 
         # Back to Cartesian
         self.x = self.r * math.cos(self.phi)
@@ -146,9 +146,9 @@ def geodesicRHS(ray, rs):
     rhs = [0.0] * 4
     rhs[0] = dr
     rhs[1] = dphi
-    dt_dλ = E / f
+    dt_dLambda = E / f
     rhs[2] = (
-        - (rs / (2 * r * r)) * f * (dt_dλ**2)
+        - (rs / (2 * r * r)) * f * (dt_dLambda**2)
         + (rs / (2 * r * r * f)) * (dr**2)
         + (r - rs) * (dphi**2)
     )
@@ -160,29 +160,29 @@ def addState(a, b, factor):
     return [a[i] + b[i] * factor for i in range(4)]
 
 # --- Range Kutta 4 Function --- #
-def rk4Step(ray, dλ, rs):
+def rk4Step(ray, dLambda, rs):
     y0 = [ray.r, ray.phi, ray.dr, ray.dphi]
 
     k1 = geodesicRHS(ray, rs)
-    temp = addState(y0, k1, dλ/2.0)
+    temp = addState(y0, k1, dLambda/2.0)
     r2 = Ray((ray.x, ray.y), (0, 0))
     r2.r, r2.phi, r2.dr, r2.dphi, r2.E = temp[0], temp[1], temp[2], temp[3], ray.E
     k2 = geodesicRHS(r2, rs)
 
-    temp = addState(y0, k2, dλ/2.0)
+    temp = addState(y0, k2, dLambda/2.0)
     r3 = Ray((ray.x, ray.y), (0, 0))
     r3.r, r3.phi, r3.dr, r3.dphi, r3.E = temp[0], temp[1], temp[2], temp[3], ray.E
     k3 = geodesicRHS(r3, rs)
 
-    temp = addState(y0, k3, dλ)
+    temp = addState(y0, k3, dLambda)
     r4 = Ray((ray.x, ray.y), (0, 0))
     r4.r, r4.phi, r4.dr, r4.dphi, r4.E = temp[0], temp[1], temp[2], temp[3], ray.E
     k4 = geodesicRHS(r4, rs)
 
-    ray.r    += (dλ/6.0) * (k1[0] + 2*k2[0] + 2*k3[0] + k4[0])
-    ray.phi  += (dλ/6.0) * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
-    ray.dr   += (dλ/6.0) * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
-    ray.dphi += (dλ/6.0) * (k1[3] + 2*k2[3] + 2*k3[3] + k4[3])
+    ray.r    += (dLambda/6.0) * (k1[0] + 2*k2[0] + 2*k3[0] + k4[0])
+    ray.phi  += (dLambda/6.0) * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
+    ray.dr   += (dLambda/6.0) * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
+    ray.dphi += (dLambda/6.0) * (k1[3] + 2*k2[3] + 2*k3[3] + k4[3])
 
     ray.x = ray.r * math.cos(ray.phi)
     ray.y = ray.r * math.sin(ray.phi)
