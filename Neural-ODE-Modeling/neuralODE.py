@@ -3,7 +3,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # --- Data Preparation --- #
 import pandas as pd
-dataset = pd.read_csv('ray_dataset.csv')
+dataset = pd.read_csv('dataset/ray_dataset.csv')
 
 features = dataset.columns
 new_features = features.drop(['ray_id','step','x','y'])
@@ -54,7 +54,7 @@ print(f"Test MSE: {loss}")
 # --- Exporting the working model --- #
 import joblib
 
-model.save('neuralODE_model.keras')
-joblib.dump(scaler_X, 'scaler_X.pkl')
-joblib.dump(scaler_y, 'scaler_y.pkl')
+model.save('exports/neuralODE_model.keras')
+joblib.dump(scaler_X, 'exports/scaler_X.pkl')
+joblib.dump(scaler_y, 'exports/scaler_y.pkl')
 print('Exportation done!')

@@ -7,9 +7,9 @@ import joblib
 
 class TrajectoryNN:
     def __init__(self,
-                model_path='neuralODE_model.keras',
-                scaler_X_path='scaler_X.pkl',
-                scaler_y_path='scaler_y.pkl'):
+                model_path='Neural-ODE-Modeling/exports/neuralODE_model.keras',
+                scaler_X_path='Neural-ODE-Modeling/exports/scaler_X.pkl',
+                scaler_y_path='Neural-ODE-Modeling/exports/scaler_y.pkl'):
         
         self.model = load_model(model_path, compile=False)
         self.scaler_X = joblib.load(scaler_X_path)

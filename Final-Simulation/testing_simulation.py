@@ -6,9 +6,9 @@ import joblib
 import numpy as np
 
 # Load trained model and scaler
-model = load_model("neuralODE_model.keras")
-scaler_X = joblib.load("scaler_X.pkl")
-scaler_y = joblib.load("scaler_y.pkl")
+model = load_model("Neural-ODE-Modeling/exports/neuralODE_model.keras")
+scaler_X = joblib.load("Neural-ODE-Modeling/exports/scaler_X.pkl")
+scaler_y = joblib.load("Neural-ODE-Modeling/exports/scaler_y.pkl")
 
 def simulate_ray(initial_state, steps=100):
     state = scaler_X.transform(initial_state.reshape(1, -1))

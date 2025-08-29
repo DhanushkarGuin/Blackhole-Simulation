@@ -35,9 +35,9 @@ class NNRay(Ray):
         self.trail.append((self.x, self.y))
 
 def main():
-    nn = TrajectoryNN(model_path='neuralODE_model.keras',
-                    scaler_X_path='scaler_X.pkl',
-                    scaler_y_path='scaler_y.pkl')
+    nn = TrajectoryNN(model_path='Neural-ODE-Modeling/exports/neuralODE_model.keras',
+                    scaler_X_path='Neural-ODE-Modeling/exports/scaler_X.pkl',
+                    scaler_y_path='Neural-ODE-Modeling/exports/scaler_y.pkl')
     
     rays = []
     x0 = -1e11

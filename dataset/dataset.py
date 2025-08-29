@@ -9,7 +9,7 @@ x0 = -1e11
 for y0 in np.linspace(-5e10, 5e10, 10):
     rays.append(Ray((x0, y0), (c, 0.0)))
 
-with open("ray_dataset.csv", "w", newline="") as csvfile:
+with open("/dataset/ray_dataset.csv", "w", newline="") as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(["ray_id", "step", "x", "y", "r", "phi", "dr", "dphi", "E", "L"])
 
